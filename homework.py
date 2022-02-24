@@ -1,11 +1,26 @@
-...
+import os
+
+import requests
+
+import time
+
+import logging
+
+from dotenv import load_dotenv
+
+import telegram
+
+from telegram.ext import Updater, CommandHandler, MessageHandler, Filters
+from telegram import Bot, ReplyKeyboardMarkup
+
+
 
 load_dotenv()
 
 
-PRACTICUM_TOKEN = ...
-TELEGRAM_TOKEN = ...
-TELEGRAM_CHAT_ID = ...
+PRACTICUM_TOKEN = os.getenv('PRACTICUM_TOKEN')
+TELEGRAM_TOKEN = os.getenv('TELEGRAM_TOKEN')
+TELEGRAM_CHAT_ID = os.getenv('TELEGRAM_CHAT_ID')
 
 RETRY_TIME = 600
 ENDPOINT = 'https://practicum.yandex.ru/api/user_api/homework_statuses/'
@@ -20,7 +35,10 @@ HOMEWORK_STATUSES = {
 
 
 def send_message(bot, message):
-    ...
+    bot.send_message(
+            chat_id=TELEGRAM_CHAT_ID,
+            text=message,
+        )
 
 
 def get_api_answer(current_timestamp):
@@ -31,8 +49,14 @@ def get_api_answer(current_timestamp):
 
 
 def check_response(response):
+    api_homeworks_key = 'homeworks'
+    try:
+        homeworks = response[api_homeworks_key]
+        time_stamp = response['current_date']
+    except KeyError as error:
+        error_message = f'Ключа {error} нет в ответе API'
 
-    ...
+    
 
 
 def parse_status(homework):
@@ -54,12 +78,13 @@ def check_tokens():
 
 def main():
     """Основная логика работы бота."""
-
-    ...
-
+    
     bot = telegram.Bot(token=TELEGRAM_TOKEN)
     current_timestamp = int(time.time())
 
+    updater = Updater(token=TELEGRAM_TOKEN)
+    updater.start_polling(poll_interval=10.0)
+    updater.idle()
     ...
 
     while True:
@@ -77,6 +102,8 @@ def main():
             time.sleep(RETRY_TIME)
         else:
             ...
+    
+
 
 
 if __name__ == '__main__':
