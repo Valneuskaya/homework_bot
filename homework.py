@@ -1,23 +1,16 @@
-from email import message
 import os
-
 import sys
-
 import requests
-
 import time
-
 import logging
 
 from dotenv import load_dotenv
+from http import HTTPStatus
 
 import telegram
-
-from telegram.ext import Updater, CommandHandler, MessageHandler, Filters
-from telegram import Bot, ReplyKeyboardMarkup
+from telegram.ext import Updater
 
 from APIError import APIError
-
 
 
 load_dotenv()
@@ -64,7 +57,9 @@ def send_message(bot, message):
         )
     except telegram.TelegramError:
         error_message = f'Не получилось отправить сообщение "{message}".'
-    
+        log_raise_error(error_message)
+    else:
+        logger.info(f'Бот отправил сообщение {message}') 
 
 
 def get_api_answer(current_timestamp):
@@ -72,12 +67,22 @@ def get_api_answer(current_timestamp):
     и преобразует ответ к типам данных Python"""
     timestamp = current_timestamp or int(time.time())
     params = {'from_date': timestamp}
-    homework_statuses = requests.get(
+    try:
+        homework_statuses = requests.get(
             url=ENDPOINT,
             headers=HEADERS,
             params=params
         )
-    return homework_statuses.json()
+    except requests.exceptions.RequestException:
+        error_message = f'Сбой обращения к {ENDPOINT}'
+        log_raise_error(error_message)
+    else:
+        if homework_statuses.status_code != HTTPStatus.OK.value:
+            error_message = (f'{ENDPOINT} недоступен. '
+                f'Код ответа API: {homework_statuses.status_code}'
+            )
+            log_raise_error(error_message)
+        return homework_statuses.json()
 
 
 def check_response(response):
@@ -89,13 +94,14 @@ def check_response(response):
         time_stamp = response['current_date']
     except KeyError as error:
         error_message = f'Ключа {error} нет в ответе API'
+        log_raise_error(error_message)
     else:
         if not isinstance(homeworks, list):
-            error_msg = (
+            error_message = (
                 f'Под ключом {api_homeworks_key} в ответе API '
                 f'содержится некорректный тип: {type(homeworks)}'
             )
-            #log_and_raise_error(error_msg)
+            log_raise_error(error_message)
         if not homeworks:
             logger.debug(
                 (
@@ -104,7 +110,6 @@ def check_response(response):
                 )
             )
         return homeworks
-    
 
 
 def parse_status(homework):
@@ -127,7 +132,17 @@ def parse_status(homework):
 
 def check_tokens():
     """Проверяет доступность переменных окружения."""
-    ...
+    data = {
+        'PRACTICUM_TOKEN': PRACTICUM_TOKEN,
+        'TELEGRAM_TOKEN': TELEGRAM_TOKEN,
+        'TELEGRAM_CHAT_ID': TELEGRAM_CHAT_ID,
+    }
+    for token_key, token_value in data.items():
+        if not token_value:
+            logger.critical(f'Нет обязательной переменной {token_key}')
+            return False
+    return True
+
 
 
 def main():
@@ -135,30 +150,33 @@ def main():
     
     bot = telegram.Bot(token=TELEGRAM_TOKEN)
     current_timestamp = int(time.time())
+    previous_error = ''
 
     updater = Updater(token=TELEGRAM_TOKEN)
     updater.start_polling(poll_interval=10.0)
     updater.idle()
-    ...
 
     while True:
         try:
-            response = ...
-
-            ...
-
-            current_timestamp = ...
-            time.sleep(RETRY_TIME)
-
-        except Exception as error:
-            message = f'Сбой в работе программы: {error}'
-            ...
-            time.sleep(RETRY_TIME)
+            response = get_api_answer(current_timestamp)
+            homeworks = check_response(response)
+            for homework in homeworks:
+                verdict = parse_status(homework)
+                send_message(bot, verdict)
+        except APIError as error:
+            try:
+                if error.message != previous_error:
+                    send_message(bot, error.message)
+            except APIError as error:
+                error_message = f'Сбой в работе программы: {error}'
+                logger.error(error_message)
+            else:
+                previous_error = error.message
         else:
-            ...
+            current_timestamp = response['current_date']
+        finally:
+            time.sleep(RETRY_TIME)
     
-
-
 
 if __name__ == '__main__':
     main()
