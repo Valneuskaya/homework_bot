@@ -1,4 +1,7 @@
+from email import message
 import os
+
+import sys
 
 import requests
 
@@ -13,6 +16,8 @@ import telegram
 from telegram.ext import Updater, CommandHandler, MessageHandler, Filters
 from telegram import Bot, ReplyKeyboardMarkup
 
+from APIError import APIError
+
 
 
 load_dotenv()
@@ -21,6 +26,15 @@ load_dotenv()
 PRACTICUM_TOKEN = os.getenv('PRACTICUM_TOKEN')
 TELEGRAM_TOKEN = os.getenv('TELEGRAM_TOKEN')
 TELEGRAM_CHAT_ID = os.getenv('TELEGRAM_CHAT_ID')
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
+handler = logging.StreamHandler(sys.stdout)
+formatter = logging.Formatter(
+    '%(asctime)s %(levelname)s %(message)s'
+)
+handler.setFormatter(formatter)
+logger.addHandler(handler)
 
 RETRY_TIME = 600
 ENDPOINT = 'https://practicum.yandex.ru/api/user_api/homework_statuses/'
@@ -34,45 +48,85 @@ HOMEWORK_STATUSES = {
 }
 
 
+def log_raise_error(error_message):
+    """Логи и вызов исключения"""
+    message = f'Программа {error_message} не работает'
+    logger.error(message)
+    raise APIError(message)
+
+
 def send_message(bot, message):
-    bot.send_message(
+    """Отправляет сообщение в чат TELEGRAM_CHAT_ID"""
+    try:
+        bot.send_message(
             chat_id=TELEGRAM_CHAT_ID,
             text=message,
         )
+    except telegram.TelegramError:
+        error_message = f'Не получилось отправить сообщение "{message}".'
+    
 
 
 def get_api_answer(current_timestamp):
+    """Делает запрос к эндпоинту API-сервиса
+    и преобразует ответ к типам данных Python"""
     timestamp = current_timestamp or int(time.time())
     params = {'from_date': timestamp}
-
-    ...
+    homework_statuses = requests.get(
+            url=ENDPOINT,
+            headers=HEADERS,
+            params=params
+        )
+    return homework_statuses.json()
 
 
 def check_response(response):
+    """Проверяет ответ API на корректность
+    и возвращяет список домашних работ."""
     api_homeworks_key = 'homeworks'
     try:
         homeworks = response[api_homeworks_key]
         time_stamp = response['current_date']
     except KeyError as error:
         error_message = f'Ключа {error} нет в ответе API'
-
+    else:
+        if not isinstance(homeworks, list):
+            error_msg = (
+                f'Под ключом {api_homeworks_key} в ответе API '
+                f'содержится некорректный тип: {type(homeworks)}'
+            )
+            #log_and_raise_error(error_msg)
+        if not homeworks:
+            logger.debug(
+                (
+                    'Статус домашней работы не изменился '
+                    f'с времени UNIX-time: {time_stamp}'
+                )
+            )
+        return homeworks
     
 
 
 def parse_status(homework):
-    homework_name = ...
-    homework_status = ...
-
-    ...
-
-    verdict = ...
-
-    ...
-
-    return f'Изменился статус проверки работы "{homework_name}". {verdict}'
+    """Извлекает статус домашней работы
+    и возвращает один из вердиктов словаря HOMEWORK_STATUSES."""
+    try:
+        homework_name = homework['homework_name']
+        homework_status = homework['status']
+    except KeyError as error:
+        error_message = f'Ключа {error} нет в ответе API'
+        log_raise_error(error_message)
+    else:
+        if homework_status not in HOMEWORK_STATUSES:
+            error_message =  (f'Статус {homework_status} '
+                            f'работы {homework_name} не найден')
+            log_raise_error(error_message)
+        verdict = HOMEWORK_STATUSES[homework_status]
+        return f'Изменился статус проверки работы "{homework_name}". {verdict}'
 
 
 def check_tokens():
+    """Проверяет доступность переменных окружения."""
     ...
 
 
