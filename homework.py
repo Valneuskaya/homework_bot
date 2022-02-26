@@ -40,14 +40,14 @@ HOMEWORK_STATUSES = {
 
 
 def log_raise_error(error_message):
-    """Логи и вызов исключения"""
+    """Логи и вызов исключения."""
     message = f'Программа {error_message} не работает'
     logger.error(message)
     raise APIError(message)
 
 
 def send_message(bot, message):
-    """Отправляет сообщение в чат TELEGRAM_CHAT_ID"""
+    """Отправляет сообщение в чат TELEGRAM_CHAT_ID."""
     try:
         bot.send_message(
             chat_id=TELEGRAM_CHAT_ID,
@@ -57,12 +57,14 @@ def send_message(bot, message):
         error_message = f'Не получилось отправить сообщение "{message}".'
         log_raise_error(error_message)
     else:
-        logger.info(f'Бот отправил сообщение {message}') 
+        logger.info(f'Бот отправил сообщение {message}')
 
 
 def get_api_answer(current_timestamp):
-    """Делает запрос к эндпоинту API-сервиса
-    и преобразует ответ к типам данных Python"""
+    """
+    Делает запрос к эндпоинту API-сервиса
+    и преобразует ответ к типам данных Python.
+    """
     timestamp = current_timestamp or int(time.time())
     params = {'from_date': timestamp}
     try:
@@ -77,15 +79,17 @@ def get_api_answer(current_timestamp):
     else:
         if homework_statuses.status_code != HTTPStatus.OK.value:
             error_message = (f'{ENDPOINT} недоступен. '
-                f'Код ответа API: {homework_statuses.status_code}'
-            )
+                             f'Код ответа API: {homework_statuses.status_code}'
+                            )
             log_raise_error(error_message)
         return homework_statuses.json()
 
 
 def check_response(response):
-    """Проверяет ответ API на корректность
-    и возвращяет список домашних работ."""
+    """
+    Проверяет ответ API на корректность
+    и возвращяет список домашних работ.
+    """
     api_homeworks_key = 'homeworks'
     try:
         homeworks = response[api_homeworks_key]
@@ -111,8 +115,10 @@ def check_response(response):
 
 
 def parse_status(homework):
-    """Извлекает статус домашней работы
-    и возвращает один из вердиктов словаря HOMEWORK_STATUSES."""
+    """
+    Извлекает статус домашней работы
+    и возвращает один из вердиктов словаря HOMEWORK_STATUSES.
+    """
     try:
         homework_name = homework['homework_name']
         homework_status = homework['status']
@@ -121,8 +127,8 @@ def parse_status(homework):
         log_raise_error(error_message)
     else:
         if homework_status not in HOMEWORK_STATUSES:
-            error_message =  (f'Статус {homework_status} '
-                            f'работы {homework_name} не найден')
+            error_message = (f'Статус {homework_status} '
+                             f'работы {homework_name} не найден')
             log_raise_error(error_message)
         verdict = HOMEWORK_STATUSES[homework_status]
         return f'Изменился статус проверки работы "{homework_name}". {verdict}'
@@ -142,10 +148,8 @@ def check_tokens():
     return True
 
 
-
 def main():
     """Основная логика работы бота."""
-    
     bot = telegram.Bot(token=TELEGRAM_TOKEN)
     current_timestamp = int(time.time())
     previous_error = ''
@@ -174,7 +178,7 @@ def main():
             current_timestamp = response['current_date']
         finally:
             time.sleep(RETRY_TIME)
-    
+
 
 if __name__ == '__main__':
     main()
