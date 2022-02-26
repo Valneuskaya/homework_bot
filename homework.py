@@ -1,17 +1,15 @@
+import logging
 import os
 import sys
-import requests
 import time
-import logging
-
-from dotenv import load_dotenv
 from http import HTTPStatus
 
+import requests
 import telegram
+from dotenv import load_dotenv
 from telegram.ext import Updater
 
 from APIError import APIError
-
 
 load_dotenv()
 
