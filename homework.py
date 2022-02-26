@@ -41,7 +41,7 @@ HOMEWORK_STATUSES = {
 
 def log_raise_error(error_message):
     """Логи и вызов исключения."""
-    message = f'Программа {error_message} не работает'
+    message = f'Программа "{error_message}" не работает'
     logger.error(message)
     raise APIError(message)
 
@@ -113,9 +113,8 @@ def parse_status(homework):
     try:
         homework_name = homework['homework_name']
         homework_status = homework['status']
-    except KeyError as error:
-        error_message = f'Ключа {error} нет в ответе API'
-        log_raise_error(error_message)
+    except KeyError:
+        raise KeyError('Статус работы не документирован')
     else:
         if homework_status not in HOMEWORK_STATUSES:
             error_message = (f'Статус {homework_status} '
