@@ -61,7 +61,7 @@ def send_message(bot, message):
 
 
 def get_api_answer(current_timestamp):
-    """Запрос к эндпоинту API-сервиса и преобразование к типам данных Python."""
+    """Запрос эндпоинта APIсервиса и преобразование к типам данных Python."""
     timestamp = current_timestamp or int(time.time())
     params = {'from_date': timestamp}
     try:
@@ -109,7 +109,7 @@ def check_response(response):
 
 
 def parse_status(homework):
-    """Извлечение статуса домашней работы, возврат вердикт словаря HOMEWORK_STATUSES."""
+    """Извлечение статуса д/р, возврат вердикт словаря HOMEWORK_STATUSES."""
     try:
         homework_name = homework['homework_name']
         homework_status = homework['status']
