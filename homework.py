@@ -7,7 +7,6 @@ from http import HTTPStatus
 import requests
 import telegram
 from dotenv import load_dotenv
-from telegram.ext import Updater
 
 from api_error import APIError
 
@@ -92,15 +91,12 @@ def check_response(response):
     if not isinstance(homeworks, list):
         error_message = (
             f'Под ключом "{api_homeworks_key}" в ответе API '
-            f'содержится некорректный тип: "{type(homeworks)}"'
-            )
+            f'содержится некорректный тип: "{type(homeworks)}"')
         log_raise_error(error_message)
     if not homeworks:
         logger.debug(
-            (
-                'Статус домашней работы не изменился '
-                f'с времени UNIX-time: "{time_stamp}"'
-                )
+            ('Статус домашней работы не изменился '
+                f'с времени UNIX-time: "{time_stamp}"')
         )
     return homeworks
 
@@ -139,7 +135,6 @@ def main():
     bot = telegram.Bot(token=TELEGRAM_TOKEN)
     current_timestamp = int(time.time())
     previous_error = ''
-
 
     while True:
         try:
