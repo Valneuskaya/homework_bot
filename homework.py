@@ -9,7 +9,7 @@ import telegram
 from dotenv import load_dotenv
 from telegram.ext import Updater
 
-from APIError import APIError
+from api_error import APIError
 
 load_dotenv()
 
@@ -56,8 +56,7 @@ def send_message(bot, message):
     except telegram.TelegramError:
         error_message = f'Не получилось отправить сообщение "{message}".'
         log_raise_error(error_message)
-    else:
-        logger.info(f'Бот отправил сообщение {message}')
+    logger.info(f'Бот отправил сообщение "{message}"')
 
 
 def get_api_answer(current_timestamp):
@@ -71,15 +70,14 @@ def get_api_answer(current_timestamp):
             params=params
         )
     except requests.exceptions.RequestException:
-        error_message = f'Сбой обращения к {ENDPOINT}'
+        error_message = f'Сбой обращения к "{ENDPOINT}"'
         log_raise_error(error_message)
-    else:
-        if homework_statuses.status_code != HTTPStatus.OK.value:
-            error_message = (f'{ENDPOINT} недоступен. '
-                             f'Код ответа API: {homework_statuses.status_code}'
-                             )
-            log_raise_error(error_message)
-        return homework_statuses.json()
+    if homework_statuses.status_code != HTTPStatus.OK.value:
+        error_message = (f'"{ENDPOINT}" недоступен. '
+                         f'Код ответа API: "{homework_statuses.status_code}"'
+                         )
+        log_raise_error(error_message)
+    return homework_statuses.json()
 
 
 def check_response(response):
@@ -89,23 +87,22 @@ def check_response(response):
         homeworks = response[api_homeworks_key]
         time_stamp = response['current_date']
     except KeyError as error:
-        error_message = f'Ключа {error} нет в ответе API'
+        error_message = f'Ключа "{error}" нет в ответе API'
         log_raise_error(error_message)
-    else:
-        if not isinstance(homeworks, list):
-            error_message = (
-                f'Под ключом {api_homeworks_key} в ответе API '
-                f'содержится некорректный тип: {type(homeworks)}'
+    if not isinstance(homeworks, list):
+        error_message = (
+            f'Под ключом "{api_homeworks_key}" в ответе API '
+            f'содержится некорректный тип: "{type(homeworks)}"'
             )
-            log_raise_error(error_message)
-        if not homeworks:
-            logger.debug(
-                (
-                    'Статус домашней работы не изменился '
-                    f'с времени UNIX-time: {time_stamp}'
+        log_raise_error(error_message)
+    if not homeworks:
+        logger.debug(
+            (
+                'Статус домашней работы не изменился '
+                f'с времени UNIX-time: "{time_stamp}"'
                 )
-            )
-        return homeworks
+        )
+    return homeworks
 
 
 def parse_status(homework):
@@ -115,13 +112,12 @@ def parse_status(homework):
         homework_status = homework['status']
     except KeyError:
         raise KeyError('Статус работы не документирован')
-    else:
-        if homework_status not in HOMEWORK_STATUSES:
-            error_message = (f'Статус {homework_status} '
-                             f'работы {homework_name} не найден')
-            log_raise_error(error_message)
-        verdict = HOMEWORK_STATUSES[homework_status]
-        return f'Изменился статус проверки работы "{homework_name}". {verdict}'
+    if homework_status not in HOMEWORK_STATUSES:
+        error_message = (f'Статус "{homework_status}" '
+                         f'работы "{homework_name}" не найден')
+        log_raise_error(error_message)
+    verdict = HOMEWORK_STATUSES[homework_status]
+    return f'Изменился статус проверки работы "{homework_name}". {verdict}'
 
 
 def check_tokens():
@@ -133,7 +129,7 @@ def check_tokens():
     }
     for token_key, token_value in data.items():
         if not token_value:
-            logger.critical(f'Нет обязательной переменной {token_key}')
+            logger.critical(f'Нет обязательной переменной "{token_key}"')
             return False
     return True
 
@@ -144,14 +140,12 @@ def main():
     current_timestamp = int(time.time())
     previous_error = ''
 
-    updater = Updater(token=TELEGRAM_TOKEN)
-    updater.start_polling(poll_interval=10.0)
-    updater.idle()
 
     while True:
         try:
             response = get_api_answer(current_timestamp)
             homeworks = check_response(response)
+            check_tokens()
             for homework in homeworks:
                 verdict = parse_status(homework)
                 send_message(bot, verdict)
@@ -160,10 +154,13 @@ def main():
                 if error.message != previous_error:
                     send_message(bot, error.message)
             except APIError as error:
-                error_message = f'Сбой в работе программы: {error}'
+                error_message = f'Сбой в работе программы: "{error}"'
                 logger.error(error_message)
             else:
                 previous_error = error.message
+        except Exception as error:
+            error_message = f'Базовая ошибка: "{error}"'
+            logger.error(error_message)
         else:
             current_timestamp = response['current_date']
         finally:
