@@ -1,5 +1,4 @@
-# homework_bot
-python telegram bot
+# Python telegram bot
 
 Написан Telegram-бот, который обращается к API сервиса Практикум.Домашка и узнает статус домашней работы: 
   
